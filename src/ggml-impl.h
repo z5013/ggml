@@ -216,7 +216,7 @@ static inline void ggml_bitset_clear(ggml_bitset_t * bitset, size_t i) {
 
 #define GGML_HASHSET_FULL ((size_t)-1)
 #define GGML_HASHSET_ALREADY_EXISTS ((size_t)-2)
-
+// size 哈希表大小，used 记录哈希表槽位是否被占用，keys 存储实际的张量指针
 struct ggml_hash_set {
     size_t size;
     ggml_bitset_t * used;       // whether or not the keys are in use i.e. set
@@ -245,18 +245,20 @@ static size_t ggml_hash_insert(struct ggml_hash_set * hash_set, struct ggml_tens
 static size_t ggml_hash_find_or_insert(struct ggml_hash_set * hash_set, struct ggml_tensor * key);
 
 // hash function for ggml_tensor
+// 指针哈希	直接使用张量内存地址作为哈希源
+// 右移4位	张量通常16字节对齐，最后4位恒为0，移除以减少碰撞
 static inline size_t ggml_hash(const struct ggml_tensor * p) {
     // the last 4 bits are always zero due to alignment
     return (size_t)(uintptr_t)p >> 4;
 }
-
+// 查找
 static size_t ggml_hash_find(const struct ggml_hash_set * hash_set, const struct ggml_tensor * key) {
     size_t h = ggml_hash(key) % hash_set->size;
 
     // linear probing
     size_t i = h;
     while (ggml_bitset_get(hash_set->used, i) && hash_set->keys[i] != key) {
-        i = (i + 1) % hash_set->size;
+        i = (i + 1) % hash_set->size;   // 线性探测
         if (i == h) {
             // visited all hash table entries -> not found
             return GGML_HASHSET_FULL;
@@ -264,12 +266,12 @@ static size_t ggml_hash_find(const struct ggml_hash_set * hash_set, const struct
     }
     return i;
 }
-
+//  检查存在
 static bool ggml_hash_contains(const struct ggml_hash_set * hash_set, struct ggml_tensor * key) {
     size_t i = ggml_hash_find(hash_set, key);
     return i != GGML_HASHSET_FULL && ggml_bitset_get(hash_set->used, i);
 }
-
+// 插入
 static size_t ggml_hash_insert(struct ggml_hash_set * hash_set, struct ggml_tensor * key) {
     size_t h = ggml_hash(key) % hash_set->size;
 
@@ -290,7 +292,7 @@ static size_t ggml_hash_insert(struct ggml_hash_set * hash_set, struct ggml_tens
     // visited all hash table entries -> not found
     GGML_ABORT("fatal error");
 }
-
+// 查找或插入
 static size_t ggml_hash_find_or_insert(struct ggml_hash_set * hash_set, struct ggml_tensor * key) {
     size_t h = ggml_hash(key) % hash_set->size;
 
@@ -313,9 +315,9 @@ static size_t ggml_hash_find_or_insert(struct ggml_hash_set * hash_set, struct g
 }
 
 // computation graph
-
+// 遍历顺序 0：从左到右，1：从右到左 2：自动选择（当前实现和0一样）
 enum ggml_cgraph_eval_order {
-    GGML_CGRAPH_EVAL_ORDER_LEFT_TO_RIGHT = 0,
+    GGML_CGRAPH_EVAL_ORDER_LEFT_TO_RIGHT = 0,   
     GGML_CGRAPH_EVAL_ORDER_RIGHT_TO_LEFT,
     GGML_CGRAPH_EVAL_ORDER_COUNT
 };
@@ -326,10 +328,10 @@ struct ggml_cgraph {
     int n_leafs; // number of leafs currently in use
 
     struct ggml_tensor ** nodes;     // tensors with data that can change if the graph is evaluated
-    struct ggml_tensor ** grads;     // the outputs of these tensors are the gradients of the nodes
-    struct ggml_tensor ** grad_accs; // accumulators for node gradients
-    struct ggml_tensor ** leafs;     // tensors with constant data
-    int32_t             * use_counts;// number of uses of each tensor, indexed by hash table slot
+    struct ggml_tensor ** grads;     // 梯度输出 the outputs of these tensors are the gradients of the nodes
+    struct ggml_tensor ** grad_accs; // 梯度累加器，grad_accs[i] is the accumulator for grads[i], which is used when a tensor is used in multiple paths to accumulate the gradients from those paths, and then copied to grads[i] at the end of the graph evaluation
+    struct ggml_tensor ** leafs;     // 叶子节点 tensors with constant data
+    int32_t             * use_counts;// 张量使用计数，number of uses of each tensor, indexed by hash table slot
 
     struct ggml_hash_set visited_hash_set;
 

@@ -614,9 +614,9 @@ extern "C" {
     };
 
     enum ggml_object_type {
-        GGML_OBJECT_TYPE_TENSOR,
-        GGML_OBJECT_TYPE_GRAPH,
-        GGML_OBJECT_TYPE_WORK_BUFFER
+        GGML_OBJECT_TYPE_TENSOR,        // 张量对象 权重、激活值、梯度、输入/输出数据
+        GGML_OBJECT_TYPE_GRAPH,         // 计算图对象 操作节点、依赖关系、执行顺序
+        GGML_OBJECT_TYPE_WORK_BUFFER    // 工作缓冲区对象 临时计算空间，用于中间结果存储
     };
 
     enum ggml_log_level {
@@ -646,48 +646,47 @@ extern "C" {
 
     struct ggml_init_params {
         // memory pool
-        size_t mem_size;   // bytes
-        void * mem_buffer; // if NULL, memory will be allocated internally
-        bool   no_alloc;   // don't allocate memory for the tensor data
+        size_t mem_size;   // bytes 内存池大小
+        void * mem_buffer; // if NULL, memory will be allocated internally 内存缓冲区指针
+        bool   no_alloc;   // don't allocate memory for the tensor data 是否禁止分配张量数据
     };
 
     // n-dimensional tensor
     struct ggml_tensor {
-        enum ggml_type type;
+        enum ggml_type type;    // 数据类型
 
-        struct ggml_backend_buffer * buffer;
+        struct ggml_backend_buffer * buffer;    // 内存缓冲区，包含张量数据
 
-        int64_t ne[GGML_MAX_DIMS]; // number of elements
-        size_t  nb[GGML_MAX_DIMS]; // stride in bytes:
+        int64_t ne[GGML_MAX_DIMS]; // number of elements 维度
+        size_t  nb[GGML_MAX_DIMS]; // stride in bytes:  步长
                                    // nb[0] = ggml_type_size(type)
                                    // nb[1] = nb[0]   * (ne[0] / ggml_blck_size(type)) + padding
                                    // nb[i] = nb[i-1] * ne[i-1]
 
         // compute data
-        enum ggml_op op;
+        enum ggml_op op;           // 操作类型
 
         // op params - allocated as int32_t for alignment
-        int32_t op_params[GGML_MAX_OP_PARAMS / sizeof(int32_t)];
+        int32_t op_params[GGML_MAX_OP_PARAMS / sizeof(int32_t)];        // 操作参数
 
-        int32_t flags;
+        int32_t flags;  
 
-        struct ggml_tensor * src[GGML_MAX_SRC];
+        struct ggml_tensor * src[GGML_MAX_SRC];         // 输入张量
 
         // source tensor and offset for views
-        struct ggml_tensor * view_src;
-        size_t               view_offs;
+        struct ggml_tensor * view_src;                  // 源张量
+        size_t               view_offs;                 // 偏移量
 
-        void * data;
+        void * data;                                    // 直接数据指针   
 
-        char name[GGML_MAX_NAME];
+        char name[GGML_MAX_NAME];                       // 调试名称
 
-        void * extra; // extra things e.g. for ggml-cuda.cu
+        void * extra; // extra things e.g. for ggml-cuda.cu     后端拓展数据
 
-        char padding[8];
-    };
-
+        char padding[8];                // 内存对齐填充
+    }; 
+    
     static const size_t GGML_TENSOR_SIZE = sizeof(struct ggml_tensor);
-
     // Abort callback
     // If not NULL, called before ggml computation
     // If it returns true, the computation is aborted

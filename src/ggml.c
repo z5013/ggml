@@ -908,32 +908,32 @@ const struct ggml_type_traits * ggml_get_type_traits(enum ggml_type type) {
 //
 
 struct ggml_object {
-    size_t offs;
-    size_t size;
-
-    struct ggml_object * next;
-
-    enum ggml_object_type type;
-
-    char padding[4];
+    size_t offs;              // 内存偏移量
+    size_t size;              // 对象大小
+    
+    struct ggml_object * next; // 链表指针 指向下一个 ggml_object,形成单向链表
+    
+    enum ggml_object_type type; // 对象类型
+    
+    char padding[4];          // 内存对齐填充
 };
-
+// 
 static const size_t GGML_OBJECT_SIZE = sizeof(struct ggml_object);
 
 //
 // ggml context
 //
-
+// 链表数据结构
 struct ggml_context {
-    size_t mem_size;
-    void * mem_buffer;
-    bool   mem_buffer_owned;
-    bool   no_alloc;
-
-    int    n_objects;
-
-    struct ggml_object * objects_begin;
-    struct ggml_object * objects_end;
+    size_t mem_size;              // 内存缓冲区总大小
+    void * mem_buffer;            // 内存缓冲区指针（支持多后端）
+    bool   mem_buffer_owned;      // 是否拥有内存所有权
+    bool   no_alloc;              // 是否禁止分配新对象
+    
+    int    n_objects;             // 已创建的对象数量
+    
+    struct ggml_object * objects_begin;  // 对象链表头
+    struct ggml_object * objects_end;    // 对象链表尾
 };
 
 //
@@ -1387,7 +1387,7 @@ enum ggml_type ggml_ftype_to_ggml_type(enum ggml_ftype ftype) {
 
     return wtype;
 }
-
+// 
 size_t ggml_tensor_overhead(void) {
     return GGML_OBJECT_SIZE + GGML_TENSOR_SIZE;
 }

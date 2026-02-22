@@ -39,13 +39,13 @@ extern "C" {
     //
 
     struct ggml_backend_buffer_i {
-        // (optional) free the buffer
+        // (optional) free the buffer 释放缓冲区
         void         (*free_buffer)  (ggml_backend_buffer_t buffer);
-        // base address of the buffer
+        // base address of the buffer 获取基地址
         void *       (*get_base)     (ggml_backend_buffer_t buffer);
-        // (optional) initialize a tensor in the buffer (eg. add tensor extras)
+        // (optional) initialize a tensor in the buffer (eg. add tensor extras) 初始化张量
         enum ggml_status (*init_tensor)(ggml_backend_buffer_t buffer, struct ggml_tensor * tensor);
-        // tensor data access
+        // tensor data access   张量数据操作
         void         (*memset_tensor)(ggml_backend_buffer_t buffer,       struct ggml_tensor * tensor,     uint8_t value, size_t offset, size_t size);
         void         (*set_tensor)   (ggml_backend_buffer_t buffer,       struct ggml_tensor * tensor, const void * data, size_t offset, size_t size);
         void         (*get_tensor)   (ggml_backend_buffer_t buffer, const struct ggml_tensor * tensor,       void * data, size_t offset, size_t size);
@@ -58,11 +58,11 @@ extern "C" {
     };
 
     struct ggml_backend_buffer {
-        struct ggml_backend_buffer_i  iface;
-        ggml_backend_buffer_type_t    buft;
-        void * context;
-        size_t size;
-        enum ggml_backend_buffer_usage usage;
+        struct ggml_backend_buffer_i  iface;    // 函数指针表
+        ggml_backend_buffer_type_t    buft;     // 缓冲区类型
+        void * context;                         // 后端特定的上下文指针，通常包含设备信息、分配器等
+        size_t size;                            // 缓冲区大小
+        enum ggml_backend_buffer_usage usage;   // 缓冲区用途（如模型权重、输入/输出数据、工作缓冲区等）
     };
 
     GGML_API ggml_backend_buffer_t ggml_backend_buffer_init(

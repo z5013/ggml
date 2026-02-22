@@ -20,10 +20,13 @@ int main(int argc, char ** argv) {
     srand(time(NULL));
     ggml_time_init();
 
-    if (argc != 4 && argc != 5) {
-        fprintf(stderr, "Usage: %s mnist-fc-f32.gguf data/MNIST/raw/t10k-images-idx3-ubyte data/MNIST/raw/t10k-labels-idx1-ubyte [CPU/CUDA0]\n", argv[0]);
-        exit(1);
-    }
+    // if (argc != 4 && argc != 5) {
+    //     fprintf(stderr, "Usage: %s mnist-fc-f32.gguf data/MNIST/raw/t10k-images-idx3-ubyte data/MNIST/raw/t10k-labels-idx1-ubyte [CPU/CUDA0]\n", argv[0]);
+    //     exit(1);
+    // }
+    argv[1] = "/mnt/d/ggml/examples/mnist/mnist-fc-f32.gguf";
+    argv[2] = "/mnt/d/ggml/examples/mnist/data/MNIST/raw/t10k-images-idx3-ubyte";
+    argv[3] = "/mnt/d/ggml/examples/mnist/data/MNIST/raw/t10k-labels-idx1-ubyte";
 
     ggml_opt_dataset_t dataset = ggml_opt_dataset_init(GGML_TYPE_F32, GGML_TYPE_F32, MNIST_NINPUT, MNIST_NCLASSES, MNIST_NTEST, MNIST_NBATCH_PHYSICAL);
 

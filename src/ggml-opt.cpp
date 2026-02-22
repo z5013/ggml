@@ -28,57 +28,65 @@ struct ggml_opt_dataset {
 };
 
 struct ggml_opt_context {
-    ggml_backend_sched_t       backend_sched        = nullptr;
-    ggml_cgraph              * allocated_graph      = nullptr;
-    ggml_cgraph              * allocated_graph_copy = nullptr;
-    struct ggml_context      * ctx_static           = nullptr;
-    struct ggml_context      * ctx_cpu              = nullptr;
-    struct ggml_context      * ctx_compute          = nullptr;
-    struct ggml_context      * ctx_copy             = nullptr;
-    ggml_backend_buffer_t      buf_static           = nullptr;
-    ggml_backend_buffer_t      buf_cpu              = nullptr;
-    std::mt19937               rng;
-    enum ggml_opt_loss_type    loss_type;
-    enum ggml_opt_build_type   build_type;
-    enum ggml_opt_build_type   build_type_alloc;
-
-    struct ggml_tensor * inputs  = nullptr;
-    struct ggml_tensor * outputs = nullptr;
-    struct ggml_tensor * labels  = nullptr;
-
-    struct ggml_tensor * loss     = nullptr;
-    struct ggml_tensor * pred     = nullptr;
-    struct ggml_tensor * ncorrect = nullptr;
-
-    struct ggml_cgraph * gf      = nullptr;
-    struct ggml_cgraph * gb_grad = nullptr;
-    struct ggml_cgraph * gb_opt  = nullptr;
-    bool static_graphs           = false;
-    bool eval_ready              = false;
-    std::vector<struct ggml_tensor *> grad_accs;
-    std::vector<struct ggml_tensor *> grad_m;
-    std::vector<struct ggml_tensor *> grad_v;
-
-    int64_t iter               = 1;
-    int32_t opt_period         = 1;
-    int32_t opt_i              = 0;
-    bool    loss_per_datapoint = false;
-
-    ggml_opt_get_optimizer_params get_opt_pars    = nullptr;
-    void *                        get_opt_pars_ud = nullptr;
+    // ========== 后端与调度 ==========
+    ggml_backend_sched_t       backend_sched        = nullptr;  // 后端调度器
+    ggml_cgraph              * allocated_graph      = nullptr;  // 已分配的计算图，包含操作节点、依赖关系和执行顺序
+    ggml_cgraph              * allocated_graph_copy = nullptr;  // 已分配的计算图副本，用于优化器更新时的图复制和修改
+    // ========== 内存上下文 ==========
+    struct ggml_context      * ctx_static           = nullptr;  // 静态内存上下文，用于存储不随迭代变化的张量，如模型权重
+    struct ggml_context      * ctx_cpu              = nullptr;  // CPU内存上下文，用于存储需要在CPU上进行计算的张量，如输入数据和标签
+    struct ggml_context      * ctx_compute          = nullptr;  // 计算内存上下文，用于存储计算过程中产生的中间结果和梯度
+    struct ggml_context      * ctx_copy             = nullptr;  // 复制内存上下文，用于优化器更新时的图复制和修改过程中产生的中间结果
+    // ========== 内存缓冲区 ==========
+    ggml_backend_buffer_t      buf_static           = nullptr;  // 静态内存缓冲区，用于存储不随迭代变化的张量，如模型权重
+    ggml_backend_buffer_t      buf_cpu              = nullptr;  // CPU内存缓冲区，用于存储需要在CPU上进行计算的张量，如输入数据和标签
+    // ========== 随机数与配置 ==========
+    std::mt19937               rng;             // 随机数生成器，用于数据集的随机打乱和优化器的随机采样
+    enum ggml_opt_loss_type    loss_type;       // 损失函数类型，指定优化器要最小化的损失函数，如交叉熵损失或均方误差损失
+    enum ggml_opt_build_type   build_type;      // 构建类型，指定当前构建的计算图是用于前向传播、反向传播还是优化器更新
+    enum ggml_opt_build_type   build_type_alloc;// 构建分配类型，指定当前构建的计算图分配到哪个内存上下文
+    // ========== 数据张量 ==========
+    struct ggml_tensor * inputs  = nullptr;     // 输入张量
+    struct ggml_tensor * outputs = nullptr;     // 输出张量
+    struct ggml_tensor * labels  = nullptr;     // 标签张量，用于计算损失和评估模型性能
+    // ========== 结果张量 ==========
+    struct ggml_tensor * loss     = nullptr;    // 损失张量，标量张量，包含当前批次的损失值
+    struct ggml_tensor * pred     = nullptr;    // 预测张量，包含模型对当前批次输入的预测结果
+    struct ggml_tensor * ncorrect = nullptr;    // 正确预测数量张量，标量张量，包含当前批次中模型预测正确的样本数量
+    // ========== 计算图 ==========
+    struct ggml_cgraph * gf      = nullptr;     // 前向传播计算图，包含前向传播的操作节点、依赖关系和执行顺序
+    struct ggml_cgraph * gb_grad = nullptr;     // 反向传播计算图，包含反向传播的操作节点、依赖关系和执行顺序，用于计算梯度
+    struct ggml_cgraph * gb_opt  = nullptr;     // 优化器更新计算图，包含优化器更新的操作节点、依赖关系和执行顺序，用于根据梯度更新模型参数
+    // ========== 优化器状态 ==========
+    bool static_graphs           = false;       // 是否使用静态计算图，如果为true，则前向传播、反向传播和优化器更新使用同一个计算图，减少内存分配和释放的开销
+    bool eval_ready              = false;       // 是否准备好进行评估，只有在前向传播计算图构建完成后才会设置为true
+    // 反向传播和优化器更新的计算图只有在需要进行反向传播和优化器更新时才会构建，以节省内存和计算资源
+    std::vector<struct ggml_tensor *> grad_accs;    // 梯度累加器张量列表，存储每个需要计算梯度的节点的梯度累加器张量，用于在反向传播过程中累积梯度
+    std::vector<struct ggml_tensor *> grad_m;       // 动量（一阶矩）
+    std::vector<struct ggml_tensor *> grad_v;       // 二阶矩
+    // ========== 其他配置 ==========
+    int64_t iter               = 1;                 // 当前迭代次数，从1开始递增    
+    int32_t opt_period         = 1;                 // 优化器更新周期（每多少次迭代进行一次优化器更新），默认为1，即每次迭代都进行优化器更新    
+    int32_t opt_i              = 0;                 // 优化器内部计数器，用于跟踪优化器更新的状态，如AdamW优化器中的时间步t
+    bool    loss_per_datapoint = false;             // 损失值是否为每个样本的平均损失（true）还是总损失（false），默认为false，即损失值为总损失
+    // ========== 优化器参数回调函数 ==========
+    ggml_opt_get_optimizer_params get_opt_pars    = nullptr;        // 优化器参数回调函数，用于计算优化器更新所需的参数，如学习率、权重衰减等，函数签名为：struct ggml_opt_optimizer_params (*ggml_opt_get_optimizer_params)(void * userdata)
+    void *                        get_opt_pars_ud = nullptr;        // 优化器参数回调函数的用户数据指针，传递给get_opt_pars回调函数，用于计算优化器参数时的上下文信息，如当前迭代次数、损失值等
     struct ggml_tensor *          opt_step_params = nullptr; // Stores output of get_opt_pars.
-
+    // ========== 优化器类型 ========== 
     enum ggml_opt_optimizer_type optimizer = GGML_OPT_OPTIMIZER_TYPE_ADAMW;
 };
 
 struct ggml_opt_result {
-    int64_t              ndata    = 0;
-    std::vector<float>   loss;
-    std::vector<int32_t> pred;
-    int64_t              ncorrect = 0;
+    // 固定部分：约 73 bytes (含对齐)
+    // 动态部分：loss.size()*4 + pred.size()*4 bytes
+    int64_t              ndata    = 0;      // 样本数量 8字节
+    std::vector<float>   loss;              // 每个样本的损失值      24字节+数据
+    std::vector<int32_t> pred;              // 每个样本的预测类别索引 24字节+数据
+    int64_t              ncorrect = 0;      // 预测正确的样本数量   8字节
 
-    int64_t opt_period         = -1;
-    bool    loss_per_datapoint = false;
+    int64_t opt_period         = -1;        // 优化器更新周期（每多少次迭代进行一次优化器更新）8字节
+    bool    loss_per_datapoint = false;     // 损失值是否为每个样本的平均损失（true）还是总损失（false）1字节
 };
 
 // ====== Dataset ======
