@@ -574,7 +574,7 @@ extern "C" {
 
         GGML_OP_COUNT,
     };
-
+    // 单目操作符
     enum ggml_unary_op {
         GGML_UNARY_OP_ABS,
         GGML_UNARY_OP_SGN,
@@ -601,7 +601,7 @@ extern "C" {
 
         GGML_UNARY_OP_COUNT,
     };
-
+    // 门控激活函数，通过门控机制控制信息流动
     enum ggml_glu_op {
         GGML_GLU_OP_REGLU,
         GGML_GLU_OP_GEGLU,
@@ -636,12 +636,12 @@ extern "C" {
         GGML_TENSOR_FLAG_LOSS    =  8, // ...defines loss for numerical optimization (multiple loss tensors add up)
         GGML_TENSOR_FLAG_COMPUTE = 16, // ...must be computed
     };
-
+    // 三角矩阵类型，用于矩阵分解、求解等操作
     enum ggml_tri_type {
-        GGML_TRI_TYPE_UPPER_DIAG = 0,
-        GGML_TRI_TYPE_UPPER      = 1,
-        GGML_TRI_TYPE_LOWER_DIAG = 2,
-        GGML_TRI_TYPE_LOWER      = 3
+        GGML_TRI_TYPE_UPPER_DIAG = 0,   // 上三角矩阵（包含主对角线）
+        GGML_TRI_TYPE_UPPER      = 1,   // 上三角矩阵（不包含主对角线）
+        GGML_TRI_TYPE_LOWER_DIAG = 2,   // 下三角矩阵（包含主对角线）
+        GGML_TRI_TYPE_LOWER      = 3    // 下三角矩阵（不包含主对角线）
     };
 
     struct ggml_init_params {
